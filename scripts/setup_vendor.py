@@ -3,25 +3,26 @@ import requests
 
 VENDOR_DIR = os.path.join(os.path.dirname(__file__), '..', 'static', 'vendor')
 
+# Switched to jsdelivr for better reliability and correct paths
 ASSETS = [
     {
-        "url": "https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js",
+        "url": "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js",
         "name": "html5-qrcode.min.js"
     },
     {
-        "url": "https://unpkg.com/tesseract.js@v5.0.3/dist/tesseract.min.js",
+        "url": "https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js",
         "name": "tesseract.min.js"
     },
     {
-        "url": "https://unpkg.com/tesseract.js@v5.0.3/dist/worker.min.js",
+        "url": "https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/worker.min.js",
         "name": "worker.min.js"
     },
     {
-        "url": "https://unpkg.com/tesseract.js-core@v5.0.0/tesseract-core.wasm.js",
+        "url": "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.js",
         "name": "tesseract-core.wasm.js"
     },
     {
-         "url": "https://unpkg.com/tesseract.js-core@v5.0.0/tesseract-core.wasm.wasm",
+         "url": "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.wasm",
          "name": "tesseract-core.wasm.wasm"
     }
 
