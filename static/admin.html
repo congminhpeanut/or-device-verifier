@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Admin - OR Verify</title>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Admin Control</h1>
+        </div>
+
+        <div id="auth-section" class="card">
+            <h2>Administrator Access</h2>
+            <div class="input-group">
+                <label>Admin PIN</label>
+                <input type="password" id="admin-pin" class="input-control" placeholder="****">
+            </div>
+            <button id="auth-btn" class="btn btn-primary">Login</button>
+        </div>
+
+        <div id="admin-panel" class="hidden">
+
+            <!-- Create Device -->
+            <div class="card">
+                <h2>Add New Device</h2>
+                <div class="input-group">
+                    <label>Serial Number (Raw)</label>
+                    <input type="text" id="new-device-serial" class="input-control">
+                </div>
+                <div class="input-group">
+                    <label>Model</label>
+                    <input type="text" id="new-device-model" class="input-control">
+                </div>
+                <button id="create-device-btn" class="btn btn-primary">Create Device</button>
+            </div>
+
+            <!-- Bind Label -->
+            <div class="card">
+                <h2>Bind Label Loop</h2>
+                <p>1. Scan QR Code<br>2. Enter Serial to Bind</p>
+
+                <div class="input-group">
+                    <label>Label ID</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="bind-label-id" class="input-control">
+                        <button id="scan-label-btn" class="btn btn-secondary" style="width: auto;">Scan</button>
+                    </div>
+                </div>
+                <div id="admin-reader" class="hidden" style="margin-bottom: 1rem;"></div>
+
+                <div class="input-group">
+                    <label>Device Serial to Bind</label>
+                    <input type="text" id="bind-device-serial" class="input-control">
+                </div>
+
+                <button id="bind-btn" class="btn btn-primary">Bind Label</button>
+            </div>
+
+        </div>
+    </div>
+
+    <nav class="nav">
+        <a href="/" class="nav-item">
+            <span>Verify</span>
+        </a>
+        <a href="/logs" class="nav-item">
+            <span>Logs</span>
+        </a>
+        <a href="/admin" class="nav-item active">
+            <span>Admin</span>
+        </a>
+    </nav>
+
+    <script src="/static/vendor/html5-qrcode.min.js"></script>
+    <script type="module" src="/static/js/admin.js"></script>
+
+</body>
+
+</html>
