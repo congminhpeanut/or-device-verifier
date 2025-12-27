@@ -1,87 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="stylesheet" href="/static/css/style.css">
-    <title>Equipment Verification - OR Safety</title>
+    <title>Quản lý xác nhận - truy xuất QR thiết bị</title>
 </head>
+
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>OR Verify</h1>
-        <div id="connection-status" class="status-badge">Online</div>
-    </div>
-
-    <!-- Step 1: Scan Label -->
-    <div id="scan-section" class="card fade-in">
-        <h2>Scan Device Label</h2>
-        <p>Align QR code within the frame.</p>
-        <div id="reader"></div>
-        <div style="font-size: 0.8rem; color: #666; text-align: center; margin-top: 10px;">
-            Supports QR & Barcodes
+    <div class="container">
+        <div class="header">
+            <h1>Quản lý xác nhận - truy xuất QR thiết bị</h1>
+            <div id="connection-status" class="status-badge">Online</div>
         </div>
-    </div>
 
-    <!-- Step 2: Camera / OCR -->
-    <div id="camera-section" class="card hidden">
-        <h2>Verify Serial Number</h2>
-        <p>Take a clear photo of the device serial number plate.</p>
-        
-        <div style="position: relative; border-radius: 8px; overflow: hidden; background: #000;">
-            <video id="camera-preview" autoplay playsinline style="width: 100%; display: block;"></video>
-            <canvas id="camera-canvas" class="hidden"></canvas>
+        <!-- Step 1: Scan Label -->
+        <div id="scan-section" class="card fade-in">
+            <h2>Quét QR thiết bị</h2>
+            <p>Canh chỉnh mã QR trong khung.</p>
+            <div id="reader"></div>
+            <div style="font-size: 0.8rem; color: #666; text-align: center; margin-top: 10px;">
+                Hỗ trợ QR & Barcodes
+            </div>
         </div>
-        
-        <div style="margin-top: 1rem; display: flex; gap: 10px;">
-            <button id="capture-btn" class="btn btn-primary">Captured & Read Text</button>
-            <button onclick="document.getElementById('camera-section').classList.add('hidden'); document.getElementById('manual-section').classList.remove('hidden');" class="btn btn-secondary">Use Manual Entry</button>
+
+        <!-- Step 2: Camera / OCR -->
+        <div id="camera-section" class="card hidden">
+            <h2>Xác nhận số Serial</h2>
+            <p>Chụp ảnh rõ của số Serial trên thiết bị.</p>
+
+            <div style="position: relative; border-radius: 8px; overflow: hidden; background: #000;">
+                <video id="camera-preview" autoplay playsinline style="width: 100%; display: block;"></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; gap: 10px;">
+                <button id="capture-btn" class="btn btn-primary">Chụp ảnh & Đọc Text</button>
+                <button
+                    onclick="document.getElementById('camera-section').classList.add('hidden'); document.getElementById('manual-section').classList.remove('hidden');"
+                    class="btn btn-secondary">Sử dụng nhập tay</button>
+            </div>
+            <p id="ocr-status" style="text-align: center; color: var(--primary-color); font-weight: 500;"></p>
         </div>
-        <p id="ocr-status" style="text-align: center; color: var(--primary-color); font-weight: 500;"></p>
-    </div>
 
-    <!-- Step 3: Manual Confirmation -->
-    <div id="manual-section" class="card hidden">
-        <h2>Confirm Serial</h2>
-        <div class="input-group">
-            <label for="serial-input">Serial Number (Edit if needed)</label>
-            <input type="text" id="serial-input" class="input-control" placeholder="e.g. SN-12345-X" autocapitalize="characters">
+        <!-- Step 3: Manual Confirmation -->
+        <div id="manual-section" class="card hidden">
+            <h2>Xác nhận số Serial</h2>
+            <div class="input-group">
+                <label for="serial-input">Serial Number (Sửa nếu cần)</label>
+                <input type="text" id="serial-input" class="input-control" placeholder="e.g. SN-12345-X"
+                    autocapitalize="characters">
+            </div>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                Tip: Kiểm tra đúng số Serial.
+            </p>
+            <button id="verify-btn" class="btn btn-primary">Xác nhận thiết bị</button>
         </div>
-        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
-            Tips: Check for 0 vs O, 1 vs I. Dashes are important.
-        </p>
-        <button id="verify-btn" class="btn btn-primary">Verify Device</button>
+
+        <!-- Step 4: Result -->
+        <div id="result-section" class="card hidden">
+            <h2>Xác nhận kết quả</h2>
+            <div id="result-message" class="result-scan">--</div>
+            <p id="result-details" style="text-align: center; margin: 1rem 0;"></p>
+            <button id="reset-btn" class="btn btn-secondary">Bắt đầu lại</button>
+        </div>
+
     </div>
 
-    <!-- Step 4: Result -->
-    <div id="result-section" class="card hidden">
-        <h2>Verification Result</h2>
-        <div id="result-message" class="result-scan">--</div>
-        <p id="result-details" style="text-align: center; margin: 1rem 0;"></p>
-        <button id="reset-btn" class="btn btn-secondary">Start New Verification</button>
-    </div>
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/" class="nav-item active">
+            <span>Quét QR thiết bị</span>
+        </a>
+        <a href="/logs" class="nav-item">
+            <span>Lịch sử quét</span>
+        </a>
+        <a href="/admin" class="nav-item">
+            <span>Quản trị</span>
+        </a>
+    </nav>
 
-</div>
-
-<!-- Navigation -->
-<nav class="nav">
-    <a href="/" class="nav-item active">
-        <span>Verify</span>
-    </a>
-    <a href="/logs" class="nav-item">
-        <span>Logs</span>
-    </a>
-    <a href="/admin" class="nav-item">
-        <span>Admin</span>
-    </a>
-</nav>
-
-<!-- Scripts -->
-<script src="/static/vendor/html5-qrcode.min.js"></script>
-<script src="/static/vendor/tesseract.min.js"></script>
-<script type="module" src="/static/js/app.js"></script>
+    <!-- Scripts -->
+    <script src="/static/vendor/html5-qrcode.min.js"></script>
+    <script src="/static/vendor/tesseract.min.js"></script>
+    <script type="module" src="/static/js/app.js"></script>
 
 </body>
+
 </html>
