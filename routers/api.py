@@ -15,6 +15,10 @@ def verify_admin(admin_pin: str = Header(None, alias="X-Admin-Pin")):
     if not expected_pin or admin_pin != expected_pin:
         raise HTTPException(status_code=403, detail="Invalid Admin PIN")
 
+@router.get("/admin/verify", dependencies=[Depends(verify_admin)])
+async def check_admin():
+    return {"status": "ok"}
+
 @router.post("/devices")
 async def create_device(device: DeviceCreate, _ = Depends(verify_admin)):
     serial_norm = normalize_serial(device.serial_raw)
