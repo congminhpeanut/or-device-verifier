@@ -26,7 +26,7 @@ els.authBtn.addEventListener('click', async () => {
         // Verify PIN by making a lightweight API call
         // Using /api/devices just to check auth headers response
         try {
-            const res = await fetch('/api/devices?limit=1', {
+            const res = await fetch('/api/admin/verify', {
                 method: 'GET',
                 headers: { 'X-Admin-Pin': val }
             });
