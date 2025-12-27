@@ -62,6 +62,25 @@
                 <button id="bind-btn" class="btn btn-primary">Liên kết số Serial</button>
             </div>
 
+            <!-- Secure QR Generator -->
+            <div class="card">
+                <h2>Tạo mã QR an toàn</h2>
+                <p>Mã QR này sẽ bắt buộc người dùng sử dụng App để mở.</p>
+                <div class="input-group">
+                    <label>Link gốc</label>
+                    <input type="text" id="secure-qr-link" class="input-control"
+                        placeholder="https://example.com/device/123">
+                </div>
+                <button id="gen-qr-btn" class="btn btn-primary">Tạo QR Code</button>
+
+                <div id="qr-result-container" style="margin-top: 1rem; text-align: center;" class="hidden">
+                    <div id="qr-code-display" style="display: inline-block;"></div>
+                    <br>
+                    <a id="download-qr-btn" class="btn btn-secondary" style="margin-top: 10px; display: inline-block;"
+                        download="secure-qr.png">Tải xuống</a>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -78,6 +97,7 @@
     </nav>
 
     <script src="/static/vendor/html5-qrcode.min.js"></script>
+    <script src="/static/vendor/qrcode.min.js"></script>
     <script type="module" src="/static/js/admin.js"></script>
 
 </body>
