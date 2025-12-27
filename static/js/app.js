@@ -257,6 +257,31 @@ function displayResult(data) {
     el.className = `result-scan status-${data.result.toLowerCase()}`;
 
     document.getElementById('result-details').innerText = data.message;
+
+    // Show link if PASS and is URL
+    const linkContainer = document.getElementById('result-link-container');
+    linkContainer.innerHTML = '';
+
+    if (data.result === 'PASS' && isValidUrl(state.labelId)) {
+        const link = document.createElement('a');
+        link.href = state.labelId;
+        link.target = '_blank';
+        link.className = 'btn btn-primary';
+        link.style.backgroundColor = '#10b981'; // Green to match success
+        link.style.display = 'inline-block';
+        link.style.marginTop = '10px';
+        link.innerText = 'Truy cập liên kết';
+        linkContainer.appendChild(link);
+    }
+}
+
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
 }
 
 // Sync Logic
