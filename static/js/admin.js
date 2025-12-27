@@ -22,14 +22,13 @@ const els = {
 els.authBtn.addEventListener('click', async () => {
     const val = els.pinInput.value;
     if (val) {
-        state.pin = val; // Store temporarily
 
         // Verify PIN by making a lightweight API call
         // Using /api/devices just to check auth headers response
         try {
             const res = await fetch('/api/devices?limit=1', {
                 method: 'GET',
-                headers: { 'X-Admin-Pin': state.pin } // Changed from global 'pin' to 'state.pin' to be cleaner if we refactor, but for now global 'pin' was used. Let's stick to global 'pin' var but renamed to 'state.pin' in my thought, actually let's use the existing 'pin' var.
+                headers: { 'X-Admin-Pin': val }
             });
 
             if (res.ok) {
@@ -41,6 +40,7 @@ els.authBtn.addEventListener('click', async () => {
                 pin = null;
             }
         } catch (e) {
+            console.error(e);
             alert("Lỗi kết nối kiểm tra PIN");
         }
     }
