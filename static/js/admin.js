@@ -19,14 +19,30 @@ const els = {
     reader: document.getElementById('admin-reader')
 };
 
-els.authBtn.addEventListener('click', () => {
+els.authBtn.addEventListener('click', async () => {
     const val = els.pinInput.value;
     if (val) {
-        // Simple client-side check implies "trust but verify on server"
-        // But we actually just store it to send in headers
-        pin = val;
-        els.authSection.classList.add('hidden');
-        els.adminPanel.classList.remove('hidden');
+        state.pin = val; // Store temporarily
+
+        // Verify PIN by making a lightweight API call
+        // Using /api/devices just to check auth headers response
+        try {
+            const res = await fetch('/api/devices?limit=1', {
+                method: 'GET',
+                headers: { 'X-Admin-Pin': state.pin } // Changed from global 'pin' to 'state.pin' to be cleaner if we refactor, but for now global 'pin' was used. Let's stick to global 'pin' var but renamed to 'state.pin' in my thought, actually let's use the existing 'pin' var.
+            });
+
+            if (res.ok) {
+                pin = val;
+                els.authSection.classList.add('hidden');
+                els.adminPanel.classList.remove('hidden');
+            } else {
+                alert("Mã PIN quản trị không đúng!");
+                pin = null;
+            }
+        } catch (e) {
+            alert("Lỗi kết nối kiểm tra PIN");
+        }
     }
 });
 
@@ -95,4 +111,46 @@ els.scanBtn.addEventListener('click', () => {
         scanner.clear();
         els.reader.classList.add('hidden');
     });
+});
+
+// Secure QR Generator
+const qrEls = {
+    input: document.getElementById('secure-qr-link'),
+    btn: document.getElementById('gen-qr-btn'),
+    container: document.getElementById('qr-result-container'),
+    display: document.getElementById('qr-code-display'),
+    download: document.getElementById('download-qr-btn')
+};
+
+qrEls.btn.addEventListener('click', () => {
+    const originalLink = qrEls.input.value;
+    if (!originalLink) return alert("Vui lòng nhập link gốc");
+
+    // Construct deep link
+    const deepLink = `https://or-device-verifier.onrender.com/?target=${encodeURIComponent(originalLink)}`;
+
+    // Clear previous
+    qrEls.display.innerHTML = '';
+    qrEls.container.classList.remove('hidden');
+
+    // Generate
+    new QRCode(qrEls.display, {
+        text: deepLink,
+        width: 256,
+        height: 256
+    });
+
+    // Handle download (wait for canvas/img to be generated)
+    setTimeout(() => {
+        const img = qrEls.display.querySelector('img');
+        if (img) {
+            qrEls.download.href = img.src;
+        } else {
+            // If it rendered as canvas
+            const canvas = qrEls.display.querySelector('canvas');
+            if (canvas) {
+                qrEls.download.href = canvas.toDataURL("image/png");
+            }
+        }
+    }, 500);
 });

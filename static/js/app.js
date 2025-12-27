@@ -42,6 +42,15 @@ async function init() {
     }
 
     setupScanner();
+
+    // Check for Deep Link (Secure QR)
+    const urlParams = new URLSearchParams(window.location.search);
+    const target = urlParams.get('target');
+    if (target) {
+        console.log("Deep link target found:", target);
+        // Simulate successful scan
+        onScanSuccess(target, { result: { text: target } });
+    }
 }
 
 function showSection(name) {
