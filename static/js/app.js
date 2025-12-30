@@ -238,6 +238,12 @@ async function onScanSuccess(decodedText, decodedResult) {
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
             url = 'https://' + url;
         }
+
+        // Log the access before redirecting
+        // We use await to ensure it tries to send. 
+        // For better reliably during unload we might want sendBeacon, but await fetch is ok here as we halt before redirect.
+        await logUrlAccess(decodedText); // Log raw text as label_id
+
         window.location.href = url;
         return;
     }
@@ -248,6 +254,30 @@ async function onScanSuccess(decodedText, decodedResult) {
 
 function onScanFailure(error) {
     // console.warn(`Code scan error = ${error}`);
+}
+
+async function logUrlAccess(url) {
+    const payload = {
+        label_id: url,
+        employee_code: state.employeeCode,
+        method: "URL_REDIRECT",
+        is_offline_event: !navigator.onLine,
+        created_at: new Date().toISOString()
+    };
+
+    try {
+        if (navigator.onLine) {
+            await fetch('/api/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            await offlineVerify(payload); // Queue it
+        }
+    } catch (e) {
+        console.error("Logging failed", e);
+    }
 }
 
 async function performVerification() {
