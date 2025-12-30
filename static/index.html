@@ -15,10 +15,43 @@
         <div class="header">
             <h1>Quản lý xác nhận - truy xuất QR thiết bị</h1>
             <div id="connection-status" class="status-badge">Online</div>
+            <div id="user-info" style="font-size: 0.9rem; margin-top: 5px; color: #555; display: none;"></div>
+            <button id="logout-btn" class="btn btn-secondary"
+                style="font-size: 0.8rem; padding: 5px 10px; margin-top: 5px; display: none;">Đăng xuất</button>
+        </div>
+
+        <!-- Step 0: Login -->
+        <div id="login-section" class="card">
+            <h2>Đăng nhập Nhân viên</h2>
+            <div class="input-group">
+                <label for="employee-code">Mã Nhân viên</label>
+                <input type="text" id="employee-code" class="input-control" placeholder="Nhập mã nhân viên">
+            </div>
+            <div class="input-group">
+                <label for="employee-password">Mật khẩu</label>
+                <input type="password" id="employee-password" class="input-control"
+                    placeholder="Mật khẩu (Mặc định: 1234)">
+            </div>
+            <button id="login-btn" class="btn btn-primary">Đăng nhập</button>
+        </div>
+
+        <!-- Step 0.5: Change Password -->
+        <div id="change-password-section" class="card hidden">
+            <h2>Đổi Mật khẩu (Bắt buộc)</h2>
+            <p>Đây là lần đăng nhập đầu tiên. Vui lòng đổi mật khẩu.</p>
+            <div class="input-group">
+                <label for="new-password">Mật khẩu mới</label>
+                <input type="password" id="new-password" class="input-control" placeholder="Nhập mật khẩu mới">
+            </div>
+            <div class="input-group">
+                <label for="confirm-password">Xác nhận mật khẩu</label>
+                <input type="password" id="confirm-password" class="input-control" placeholder="Nhập lại mật khẩu mới">
+            </div>
+            <button id="change-pass-btn" class="btn btn-primary">Đổi Mật khẩu & Tiếp tục</button>
         </div>
 
         <!-- Step 1: Scan Label -->
-        <div id="scan-section" class="card fade-in">
+        <div id="scan-section" class="card hidden">
             <h2>Quét QR thiết bị</h2>
             <p>Canh chỉnh mã QR trong khung.</p>
             <div id="reader"></div>
@@ -27,46 +60,25 @@
             </div>
         </div>
 
-        <!-- Step 2: Camera / OCR -->
+        <!-- Step 2: Camera / OCR (REMOVED/HIDDEN as per req "Bỏ verify serial") -->
+        <!-- We keep it hidden just in case but flow will skip it -->
         <div id="camera-section" class="card hidden">
             <h2>Xác nhận số Serial</h2>
-            <p>Chụp ảnh rõ của số Serial trên thiết bị.</p>
-
-            <div style="position: relative; border-radius: 8px; overflow: hidden; background: #000;">
-                <video id="camera-preview" autoplay playsinline style="width: 100%; display: block;"></video>
-                <canvas id="camera-canvas" class="hidden"></canvas>
-            </div>
-
-            <div style="margin-top: 1rem; display: flex; gap: 10px;">
-                <button id="capture-btn" class="btn btn-primary">Chụp ảnh & Đọc Text</button>
-                <button
-                    onclick="document.getElementById('camera-section').classList.add('hidden'); document.getElementById('manual-section').classList.remove('hidden');"
-                    class="btn btn-secondary">Sử dụng nhập tay</button>
-            </div>
-            <p id="ocr-status" style="text-align: center; color: var(--primary-color); font-weight: 500;"></p>
+            <!-- Content removed for simplicity, flow skips this -->
         </div>
 
-        <!-- Step 3: Manual Confirmation -->
+        <!-- Step 3: Manual Confirmation (REMOVED/HIDDEN) -->
         <div id="manual-section" class="card hidden">
-            <h2>Xác nhận số Serial</h2>
-            <div class="input-group">
-                <label for="serial-input">Serial Number (Sửa nếu cần)</label>
-                <input type="text" id="serial-input" class="input-control" placeholder="e.g. SN-12345-X"
-                    autocapitalize="characters">
-            </div>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
-                Tip: Kiểm tra đúng số Serial.
-            </p>
-            <button id="verify-btn" class="btn btn-primary">Xác nhận thiết bị</button>
+            <!-- Content removed for simplicity, flow skips this -->
         </div>
 
         <!-- Step 4: Result -->
         <div id="result-section" class="card hidden">
-            <h2>Xác nhận kết quả</h2>
+            <h2>Kết quả Xác nhận</h2>
             <div id="result-message" class="result-scan">--</div>
             <div id="result-details" style="text-align: center; margin: 1rem 0;"></div>
             <div id="result-link-container" style="text-align: center; margin-bottom: 1rem;"></div>
-            <button id="reset-btn" class="btn btn-secondary">Bắt đầu lại</button>
+            <button id="reset-btn" class="btn btn-secondary">Tiếp tục quét</button>
         </div>
 
     </div>
