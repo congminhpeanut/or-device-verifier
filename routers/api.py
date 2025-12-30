@@ -45,6 +45,10 @@ async def change_password(data: PasswordChange):
     if not res.data:
         raise HTTPException(status_code=401, detail="Invalid old password")
     
+    # New logic: Enforce strict diff
+    if data.new_password == data.old_password:
+        raise HTTPException(status_code=400, detail="New password cannot be the same as the old password")
+    
     # Update to new password and set is_first_login = false
     update_res = supabase.table("employees").update({
         "password_text": data.new_password, 
