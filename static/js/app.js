@@ -13,7 +13,7 @@ let state = {
     labelId: null,
     employeeCode: localStorage.getItem('employeeCode') || null,
     employeeName: localStorage.getItem('employeeName') || null,
-    // We can keep actorName as alias if needed, or remove
+    pendingTarget: null
 };
 
 // Init
@@ -33,16 +33,37 @@ async function init() {
     }
     window.addEventListener('online', syncEvents);
 
+    // Check for Deep Link (Secure QR)
+    const urlParams = new URLSearchParams(window.location.search);
+    const target = urlParams.get('target');
+    if (target) {
+        console.log("Deep link target found:", target);
+        state.pendingTarget = target;
+    }
+
     // Auth Check
     if (state.employeeCode) {
         showUser(state.employeeName);
-        showSection('scan');
-        setupScanner();
+
+        // If we have a pending target, process it immediately instead of showing scan
+        if (state.pendingTarget) {
+            handlePendingTarget();
+        } else {
+            showSection('scan');
+            setupScanner();
+        }
     } else {
         showSection('login');
     }
 
     setupEventListeners();
+}
+
+function handlePendingTarget() {
+    if (!state.pendingTarget) return;
+    const target = state.pendingTarget;
+    state.pendingTarget = null; // Clear it
+    onScanSuccess(target, { result: { text: target } });
 }
 
 function setupEventListeners() {
@@ -115,8 +136,12 @@ async function handleLogin() {
             showSection('changePassword');
         } else {
             showUser(data.full_name);
-            showSection('scan');
-            setupScanner();
+            if (state.pendingTarget) {
+                handlePendingTarget();
+            } else {
+                showSection('scan');
+                setupScanner();
+            }
         }
 
     } catch (e) {
