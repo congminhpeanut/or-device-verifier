@@ -234,7 +234,11 @@ async function onScanSuccess(decodedText, decodedResult) {
 
     // Logic Update: If it is a URL, redirect immediately (Assuming safe URL or internal)
     if (isValidUrl(decodedText)) {
-        window.location.href = decodedText;
+        let url = decodedText;
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+        window.location.href = url;
         return;
     }
 
@@ -328,10 +332,19 @@ function displayResult(data) {
 }
 
 function isValidUrl(string) {
+    if (!string) return false;
     try {
         new URL(string);
         return true;
     } catch (_) {
+        // If failed, try adding protocol
+        try {
+            // Check if it looks like a domain (has dot, no spaces)
+            if (string.includes('.') && !string.includes(' ')) {
+                new URL('https://' + string);
+                return true;
+            }
+        } catch (e) { }
         return false;
     }
 }
