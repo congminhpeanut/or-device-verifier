@@ -187,8 +187,22 @@ async function handleChangePassword() {
 
         alert("Đổi mật khẩu thành công! Vui lòng tiếp tục.");
         showUser(state.employeeName);
-        showSection('scan');
-        setupScanner();
+
+        // Fallback: Check URL param again in case state was lost
+        if (!state.pendingTarget) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const target = urlParams.get('target');
+            if (target) {
+                state.pendingTarget = target;
+            }
+        }
+
+        if (state.pendingTarget) {
+            handlePendingTarget();
+        } else {
+            showSection('scan');
+            setupScanner();
+        }
 
     } catch (e) {
         alert("Lỗi: " + e.message);
