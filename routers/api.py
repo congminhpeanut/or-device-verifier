@@ -114,7 +114,11 @@ async def verify_event(req: VerificationRequest):
     result = "FAIL"
     message = "Label not found"
     
-    if label_res.data:
+    # Logic Update: If method is URL_REDIRECT, we trust it (or it's just an audit log)
+    if req.method == "URL_REDIRECT":
+        result = "PASS"
+        message = "URL Access"
+    elif label_res.data:
         expected_serial_norm = label_res.data[0]['bound_serial_norm']
         # Logic Change: If label exists, we pass. We DO NOT check serial match anymore per requirements.
         result = "PASS"
