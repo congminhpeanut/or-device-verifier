@@ -138,6 +138,11 @@ async function handleChangePassword() {
         return;
     }
 
+    if (newPass === currentPass) {
+        alert("Mật khẩu mới không được trùng với mật khẩu cũ");
+        return;
+    }
+
     try {
         const res = await fetch('/api/auth/change-password', {
             method: 'POST',
@@ -200,6 +205,12 @@ async function onScanSuccess(decodedText, decodedResult) {
     // Stop scanning
     if (html5QrcodeScanner) {
         html5QrcodeScanner.clear();
+    }
+
+    // Logic Update: If it is a URL, redirect immediately (Assuming safe URL or internal)
+    if (isValidUrl(decodedText)) {
+        window.location.href = decodedText;
+        return;
     }
 
     // DIRECTLY VERIFY (No Serial Check)

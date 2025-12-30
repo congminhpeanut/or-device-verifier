@@ -20,7 +20,7 @@ async function loadLogs() {
             });
 
             if (res.status === 403) {
-                list.innerHTML = '<p style="text-align: center; color: red;">Access Denied.<br>Only authorized staff (kimhai1234) can view history.</p>';
+                list.innerHTML = '<p style="text-align: center; color: red;">Access Denied.<br>You do not have permission to view logs.</p>';
                 return;
             }
 
