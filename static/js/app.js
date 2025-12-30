@@ -2,17 +2,18 @@ import db from './db.js';
 
 // DOM Elements
 const sections = {
+    login: document.getElementById('login-section'),
+    changePassword: document.getElementById('change-password-section'),
     scan: document.getElementById('scan-section'),
-    camera: document.getElementById('camera-section'),
-    manual: document.getElementById('manual-section'),
     result: document.getElementById('result-section')
 };
 
 // State
 let state = {
     labelId: null,
-    serialRaw: null,
-    actorName: localStorage.getItem('actorName') || null
+    employeeCode: localStorage.getItem('employeeCode') || null,
+    employeeName: localStorage.getItem('employeeName') || null,
+    // We can keep actorName as alias if needed, or remove
 };
 
 // Init
@@ -32,24 +33,135 @@ async function init() {
     }
     window.addEventListener('online', syncEvents);
 
-    // Prompt for Actor Name if missing
-    if (!state.actorName) {
-        const name = prompt("Enter your name/ID for this session:", "Staff");
-        if (name) {
-            state.actorName = name;
-            localStorage.setItem('actorName', name);
-        }
+    // Auth Check
+    if (state.employeeCode) {
+        showUser(state.employeeName);
+        showSection('scan');
+        setupScanner();
+    } else {
+        showSection('login');
     }
 
-    setupScanner();
+    setupEventListeners();
+}
 
-    // Check for Deep Link (Secure QR)
-    const urlParams = new URLSearchParams(window.location.search);
-    const target = urlParams.get('target');
-    if (target) {
-        console.log("Deep link target found:", target);
-        // Simulate successful scan
-        onScanSuccess(target, { result: { text: target } });
+function setupEventListeners() {
+    // Login
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+
+    // Change Password
+    document.getElementById('change-pass-btn').addEventListener('click', handleChangePassword);
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    // Reset / Continue
+    const resetBtn = document.getElementById('reset-btn');
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+        showSection('scan');
+        setupScanner();
+    });
+}
+
+function showUser(name) {
+    const el = document.getElementById('user-info');
+    el.style.display = 'inline-block';
+    el.innerText = `Hi, ${name}`;
+    document.getElementById('logout-btn').style.display = 'inline-block';
+}
+
+function handleLogout() {
+    localStorage.removeItem('employeeCode');
+    localStorage.removeItem('employeeName');
+    state.employeeCode = null;
+    state.employeeName = null;
+    location.reload();
+}
+
+async function handleLogin() {
+    const code = document.getElementById('employee-code').value.trim();
+    const pass = document.getElementById('employee-password').value.trim();
+
+    if (!code || !pass) {
+        alert("Vui lòng nhập mã nhân viên và mật khẩu");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_code: code, password: pass })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert(err.detail || "Đăng nhập thất bại");
+            return;
+        }
+
+        const data = await res.json();
+
+        // Save State
+        state.employeeCode = data.employee_code;
+        state.employeeName = data.full_name;
+
+        // Don't persist if forced to change pass immediately? 
+        // Actually we can persist, but UI will force change.
+        localStorage.setItem('employeeCode', data.employee_code);
+        localStorage.setItem('employeeName', data.full_name);
+
+        if (data.is_first_login) {
+            showSection('changePassword');
+        } else {
+            showUser(data.full_name);
+            showSection('scan');
+            setupScanner();
+        }
+
+    } catch (e) {
+        alert("Lỗi kết nối: " + e.message);
+    }
+}
+
+async function handleChangePassword() {
+    const newPass = document.getElementById('new-password').value.trim();
+    const confirmPass = document.getElementById('confirm-password').value.trim();
+    const currentPass = document.getElementById('employee-password').value.trim(); // Use the one they just logged in with
+
+    if (!newPass || !confirmPass) {
+        alert("Vui lòng nhập mật khẩu mới");
+        return;
+    }
+    if (newPass !== confirmPass) {
+        alert("Mật khẩu xác nhận không khớp");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employee_code: state.employeeCode,
+                old_password: currentPass,
+                new_password: newPass
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert(err.detail || "Đổi mật khẩu thất bại");
+            return;
+        }
+
+        alert("Đổi mật khẩu thành công! Vui lòng tiếp tục.");
+        showUser(state.employeeName);
+        showSection('scan');
+        setupScanner();
+
+    } catch (e) {
+        alert("Lỗi: " + e.message);
     }
 }
 
@@ -65,7 +177,13 @@ function showSection(name) {
 let html5QrcodeScanner = null;
 
 function setupScanner() {
-    if (sections.scan) {
+    // Only setup if scan section is visible/active
+    if (sections.scan && !sections.scan.classList.contains('hidden')) {
+        // Clear old if exists
+        if (html5QrcodeScanner) {
+            try { html5QrcodeScanner.clear(); } catch (e) { }
+        }
+
         html5QrcodeScanner = new Html5QrcodeScanner(
             "reader",
             { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -80,119 +198,23 @@ async function onScanSuccess(decodedText, decodedResult) {
     state.labelId = decodedText;
 
     // Stop scanning
-    html5QrcodeScanner.clear();
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+    }
 
-    // Proceed to Next Step (Verify UI)
-    // We could immediately check DB if label exists to give fast feedback
-    // For now, let's ask for Serial Input (Photo or Manual)
-    showSection('camera');
-
-    // Pre-fetch label info if online to warm cache
-    try {
-        const res = await fetch(`/api/labels/${state.labelId}`);
-        if (res.ok) {
-            const data = await res.json();
-            // Cache it
-            await db.saveLabel(data);
-        }
-    } catch (e) { console.log("Offline or fetch failed, relying on cache"); }
+    // DIRECTLY VERIFY (No Serial Check)
+    await performVerification();
 }
 
 function onScanFailure(error) {
     // console.warn(`Code scan error = ${error}`);
 }
 
-// Camera / OCR Logic
-const videoElement = document.getElementById('camera-preview');
-const canvasElement = document.getElementById('camera-canvas');
-const captureBtn = document.getElementById('capture-btn');
-const manualBtn = document.getElementById('manual-entry-btn'); // Renamed logic
-
-if (captureBtn) {
-    captureBtn.addEventListener('click', async () => {
-        // Capture frame
-        const context = canvasElement.getContext('2d');
-        canvasElement.width = videoElement.videoWidth;
-        canvasElement.height = videoElement.videoHeight;
-        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-
-        const dataUrl = canvasElement.toDataURL('image/png');
-
-        // Stop camera stream
-        const stream = videoElement.srcObject;
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-
-        // Run OCR
-        performOCR(dataUrl);
-    });
-}
-
-// Start Camera Helper
-async function startCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        videoElement.srcObject = stream;
-        videoElement.play();
-    } catch (err) {
-        console.error("Camera access denied", err);
-        alert("Camera access required for OCR. Using manual fallback.");
-        showSection('manual');
-    }
-}
-
-// Hook up start camera when section shown
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.target.id === 'camera-section' && !mutation.target.classList.contains('hidden')) {
-            startCamera();
-        }
-    });
-});
-if (sections.camera) observer.observe(sections.camera, { attributes: true });
-
-
-async function performOCR(imagePath) {
-    // Show loading state
-    document.getElementById('ocr-status').innerText = "Analyzing text...";
-
-    try {
-        const worker = await Tesseract.createWorker('eng');
-        const ret = await worker.recognize(imagePath);
-        console.log(ret.data.text);
-        await worker.terminate();
-
-        // Pre-fill manual input with result for confirmation
-        document.getElementById('serial-input').value = ret.data.text.trim();
-        showSection('manual');
-        document.getElementById('ocr-status').innerText = "";
-
-    } catch (err) {
-        console.error(err);
-        alert("OCR Failed. Please enter manually.");
-        showSection('manual');
-    }
-}
-
-// Manual Entry & Verify
-const verifyBtn = document.getElementById('verify-btn');
-if (verifyBtn) {
-    verifyBtn.addEventListener('click', async () => {
-        const input = document.getElementById('serial-input').value;
-        if (!input) return;
-        state.serialRaw = input;
-
-        await performVerification();
-    });
-}
-
 async function performVerification() {
     const payload = {
         label_id: state.labelId,
-        observed_serial_raw: state.serialRaw,
-        actor_name: state.actorName,
-        method: "MANUAL", // or OCR if came from there, simplified for now
+        employee_code: state.employeeCode,
+        method: "SCAN",
         is_offline_event: !navigator.onLine,
         created_at: new Date().toISOString()
     };
@@ -223,39 +245,24 @@ async function offlineVerify(payload) {
     const label = await db.getLabel(payload.label_id);
     let resultStatus = "FAIL";
     let message = "Offline: Label unknown";
-    let expected = null;
 
-    // Simple local normalization for comparison
-    const normalize = (s) => s ? s.trim().replace(/\s+/g, ' ').toUpperCase() : "";
-    const observedNorm = normalize(payload.observed_serial_raw);
-
+    // In new flow, we just check if label exists.
     if (label) {
-        expected = label.bound_serial_norm;
-        if (expected === observedNorm) {
-            resultStatus = "PASS";
-            message = "Offline: Match confirmed";
-        } else {
-            resultStatus = "FAIL";
-            message = `Offline: Mismatch. Expected ${expected}`;
-        }
+        resultStatus = "PASS";
+        message = "Offline: Verification Successful (Label Found in Cache)";
     } else {
-        // Unknown label offline
         resultStatus = "WARN";
         message = "Offline: Label not in cache - Queued for server check";
     }
 
     // Queue event
     payload.result = resultStatus;
-    payload.expected_serial_norm = expected;
-    payload.observed_serial_norm = observedNorm;
 
     await db.queueEvent(payload);
 
     return {
         result: resultStatus,
         message: message,
-        expected_serial: expected,
-        observed_serial_norm: observedNorm
     };
 }
 
@@ -302,9 +309,7 @@ async function syncEvents() {
 
     for (const event of events) {
         try {
-            // We strip 'id' generated locally or keep it? 
-            // Server ignores extras, but we should make sure format matches
-            const { id, ...payload } = event; // remove local ID if server generates, or keep if server uses UUID
+            const { id, ...payload } = event;
 
             await fetch('/api/verify', {
                 method: 'POST',
@@ -319,10 +324,6 @@ async function syncEvents() {
         }
     }
 }
-
-// Reset Flow
-const resetBtn = document.getElementById('reset-btn');
-if (resetBtn) resetBtn.addEventListener('click', () => location.reload()); // Simple reload for MVP
 
 // Init call
 document.addEventListener('DOMContentLoaded', init);
