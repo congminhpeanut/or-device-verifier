@@ -1,7 +1,7 @@
 import unicodedata
 import re
-from fastapi import APIRouter, HTTPException, Header, Depends
-from models import DeviceCreate, LabelBind, VerificationRequest, VerificationResponse
+from fastapi import APIRouter, HTTPException, Header, Depends, Body
+from models import DeviceCreate, LabelBind, VerificationRequest, VerificationResponse, EmployeeLogin, PasswordChange
 from database import supabase
 from utils import normalize_serial
 import datetime
@@ -19,6 +19,42 @@ def verify_admin(admin_pin: str = Header(None, alias="X-Admin-Pin")):
 async def check_admin():
     return {"status": "ok"}
 
+# --- Auth Endpoints ---
+
+@router.post("/auth/login")
+async def login(creds: EmployeeLogin):
+    # Simple cleartext password check as requested "pass is 1234"
+    # In production, use hashing (bcrypt).
+    res = supabase.table("employees").select("*").eq("employee_code", creds.employee_code).eq("password_text", creds.password).execute()
+    
+    if not res.data:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    employee = res.data[0]
+    return {
+        "status": "ok",
+        "employee_code": employee['employee_code'],
+        "full_name": employee['full_name'],
+        "is_first_login": employee['is_first_login']
+    }
+
+@router.post("/auth/change-password")
+async def change_password(data: PasswordChange):
+    # Verify old password first
+    res = supabase.table("employees").select("*").eq("employee_code", data.employee_code).eq("password_text", data.old_password).execute()
+    if not res.data:
+        raise HTTPException(status_code=401, detail="Invalid old password")
+    
+    # Update to new password and set is_first_login = false
+    update_res = supabase.table("employees").update({
+        "password_text": data.new_password, 
+        "is_first_login": False
+    }).eq("employee_code", data.employee_code).execute()
+    
+    return {"status": "ok", "message": "Password changed successfully"}
+
+# --- Device/Label Endpoints ---
+
 @router.post("/devices")
 async def create_device(device: DeviceCreate, _ = Depends(verify_admin)):
     serial_norm = normalize_serial(device.serial_raw)
@@ -35,11 +71,6 @@ async def create_device(device: DeviceCreate, _ = Depends(verify_admin)):
 @router.post("/labels/bind")
 async def bind_label(bind: LabelBind, _ = Depends(verify_admin)):
     serial_norm = normalize_serial(bind.serial_raw)
-    
-    # Check if device exists, if not, maybe auto-create or error? 
-    # Req says "Bind label_id -> device.serial_norm", implies device should exist.
-    # We will assume admin creates device first, or we could upsert.
-    # Let's simple check existence first
     
     device_res = supabase.table("devices").select("serial_norm").eq("serial_norm", serial_norm).execute()
     if not device_res.data:
@@ -64,9 +95,15 @@ async def get_label(label_id: str):
         raise HTTPException(status_code=404, detail="Label not found or inactive")
     return response.data[0]
 
+# --- Verification Endpoints ---
+
 @router.post("/verify")
 async def verify_event(req: VerificationRequest):
-    # 1. Look up expected
+    # 1. Lookup Employee
+    emp_res = supabase.table("employees").select("full_name").eq("employee_code", req.employee_code).execute()
+    employee_name = emp_res.data[0]['full_name'] if emp_res.data else "Unknown"
+
+    # 2. Look up Label
     label_res = supabase.table("labels").select("bound_serial_norm").eq("label_id", req.label_id).execute()
     
     expected_serial_norm = None
@@ -75,20 +112,18 @@ async def verify_event(req: VerificationRequest):
     
     if label_res.data:
         expected_serial_norm = label_res.data[0]['bound_serial_norm']
+        # Logic Change: If label exists, we pass. We DO NOT check serial match anymore per requirements.
+        result = "PASS"
+        message = "Verification Successful (Label Found)"
         
-    observed_serial_norm = normalize_serial(req.observed_serial_raw)
-    
-    if expected_serial_norm:
-        if expected_serial_norm == observed_serial_norm:
-            result = "PASS"
-            message = "Verification Successful"
-        else:
-            result = "FAIL"
-            message = f"Mismatch: Expected {expected_serial_norm}, Got {observed_serial_norm}"
+    # We still record what was observed if sent, but it's not the diff factor
+    observed_serial_norm = normalize_serial(req.observed_serial_raw) if req.observed_serial_raw else None
     
     # Log event
     event_data = {
-        "actor_name": req.actor_name,
+        "actor_name": employee_name, # Mapping existing field to employee name
+        "employee_code": req.employee_code,
+        "employee_name": employee_name,
         "label_id": req.label_id,
         "expected_serial_norm": expected_serial_norm,
         "observed_serial_raw": req.observed_serial_raw,
@@ -101,22 +136,23 @@ async def verify_event(req: VerificationRequest):
     if req.created_at:
         event_data["created_at"] = req.created_at.isoformat()
     
-    # Fire and forget logging (or await it)
     try:
         supabase.table("verification_events").insert(event_data).execute()
     except Exception as e:
         print(f"Failed to log event: {e}") 
-        # We don't fail the verification response if logging fails, but in prod we might want a queue
         
     return VerificationResponse(
         result=result,
         message=message,
         expected_serial=expected_serial_norm,
-        observed_serial_norm=observed_serial_norm
+        # observed_serial_norm remove from response or make optional/None
     )
     
 @router.get("/events")
-async def list_events(limit: int = 50):
-    # Retrieve events
+async def list_events(limit: int = 50, x_employee_code: str = Header(None)):
+    # Permission Check
+    if x_employee_code != "kimhai1234":
+        raise HTTPException(status_code=403, detail="Access denied. Only kimhai1234 can view history.")
+
     response = supabase.table("verification_events").select("*").order("created_at", desc=True).limit(limit).execute()
     return response.data
