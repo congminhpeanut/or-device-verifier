@@ -62,6 +62,26 @@
                 <button id="bind-btn" class="btn btn-primary">Liên kết số Serial</button>
             </div>
 
+            <!-- Mapping List -->
+            <div class="card">
+                <h2>Danh sách thiết bị đang liên kết</h2>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" id="mapping-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px;">Mã QR (Label ID)</th>
+                                <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px;">Model</th>
+                                <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px;">Serial</th>
+                                <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mapping-list-body">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Secure QR Generator -->
             <div class="card">
                 <h2>Tạo mã QR an toàn</h2>
