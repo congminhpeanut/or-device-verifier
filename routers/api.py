@@ -185,9 +185,9 @@ async def delete_mapping(label_id: str):
     if not res.data:
         raise HTTPException(status_code=404, detail="Mapping not found")
         
-    # Deactivate
-    supabase.table("labels").update({"active": False}).eq("label_id", label_id).execute()
-    return {"status": "ok", "message": "Mapping deactivated"}
+    # Hard Delete as requested to ensure history and verification treat it as completely unknown
+    supabase.table("labels").delete().eq("label_id", label_id).execute()
+    return {"status": "ok", "message": "Mapping deleted permanently"}
 
 @router.get("/history/grouped")
 async def list_history_grouped(x_employee_code: str = Header(None)):
