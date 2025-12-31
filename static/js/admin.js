@@ -35,6 +35,7 @@ els.authBtn.addEventListener('click', async () => {
                 pin = val;
                 els.authSection.classList.add('hidden');
                 els.adminPanel.classList.remove('hidden');
+                loadMappings(); // Load mappings on login
             } else {
                 alert("Mã PIN quản trị không đúng!");
                 pin = null;
@@ -45,6 +46,65 @@ els.authBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// Mapping Management
+async function loadMappings() {
+    const tbody = document.getElementById('mapping-list-body');
+    tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+    const data = await apiCall('/api/admin/mappings', 'GET');
+    if (!data) {
+        tbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Chưa có liên kết nào</td></tr>';
+        return;
+    }
+
+    data.forEach(item => {
+        const tr = document.createElement('tr');
+
+        // Extract device info (it might be a list or object depending on Supabase join result)
+        // With select=...,devices(*), devices is usually an object (if 1-to-1) or array?
+        // Let's assume 1-to-1 and it returns an object or null since bound_serial_norm is FK.
+        // PostgREST with standard relationship: devices: { ... }
+
+        let model = "N/A";
+        let serial = "N/A";
+
+        if (item.devices) {
+            // If multiple match (shouldn't be), take first
+            const dev = Array.isArray(item.devices) ? item.devices[0] : item.devices;
+            if (dev) {
+                model = dev.model || "";
+                serial = dev.serial_raw || "";
+            }
+        }
+
+        tr.innerHTML = `
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.label_id}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${model}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${serial}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; background-color: #ef4444;" onclick="deleteMapping('${item.label_id}')">Xóa</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.deleteMapping = async (labelId) => {
+    if (!confirm(`Bạn có chắc muốn xóa liên kết cho ${labelId}?`)) return;
+
+    const res = await apiCall(`/api/admin/mappings/${labelId}`, 'DELETE');
+    if (res) {
+        alert("Đã xóa liên kết");
+        loadMappings();
+    }
+};
 
 // Helper for API calls
 async function apiCall(endpoint, method, body) {
