@@ -194,3 +194,47 @@ body {
     padding-top: 2rem;
   }
 }
+
+/* Grouped History Styles */
+.group-item {
+    background: white;
+    margin-bottom: 0.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.group-header {
+    padding: 1rem;
+    background: #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.group-header:hover {
+    background: #e2e8f0;
+}
+
+.group-logs {
+    display: none;
+    padding: 0;
+}
+
+.group-logs.open {
+    display: block;
+}
+
+.log-entry {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.log-entry:nth-child(even) {
+    background-color: #f8fafc;
+}
