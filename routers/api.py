@@ -164,3 +164,102 @@ async def list_events(limit: int = 50, x_employee_code: str = Header(None)):
 
     response = supabase.table("verification_events").select("*").order("created_at", desc=True).limit(limit).execute()
     return response.data
+
+@router.get("/admin/mappings", dependencies=[Depends(verify_admin)])
+async def list_mappings():
+    # Join labels with devices to get model/serial info.
+    # Supabase/PostgREST syntax: select=*,devices(*)
+    response = supabase.table("labels").select("label_id, active, bound_serial_norm, devices(serial_raw, model, status)").eq("active", True).execute()
+    return response.data
+
+@router.delete("/admin/mappings/{label_id}", dependencies=[Depends(verify_admin)])
+async def delete_mapping(label_id: str):
+    # Soft delete (set active=False) or Hard delete? 
+    # Let's do Soft Delete per common practice, or Hard Delete if requested 'remove'. 
+    # Plan said "Delete/Unbind". Upsert with active=False is safer.
+    
+    # Check if exists
+    res = supabase.table("labels").select("*").eq("label_id", label_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+        
+    # Deactivate
+    supabase.table("labels").update({"active": False}).eq("label_id", label_id).execute()
+    return {"status": "ok", "message": "Mapping deactivated"}
+
+@router.get("/history/grouped")
+async def list_history_grouped(x_employee_code: str = Header(None)):
+    # Permission Check
+    if x_employee_code != "kimhai1234":
+         raise HTTPException(status_code=403, detail="Access denied.")
+
+    # 1. Fetch raw events (we might need a larger limit or pagination, but for now take last 200)
+    # We need: device info (from expected_serial_norm -> joined devices?)
+    # verification_events has 'expected_serial_norm'.
+    # We can join with devices table on expected_serial_norm.
+    
+    # Query: Select events, and related device info.
+    # Note: 'expected_serial_norm' in events relates to 'serial_norm' in devices.
+    # Supabase syntax: verification_events!expected_serial_norm(devices(*)) ??
+    # Actually foreign key might not be explicitly set in DB for 'verification_events.expected_serial_norm' -> 'devices.serial_norm' in the schema.sql I saw.
+    # Let's check schema.sql step 10: 
+    # "create table if not exists verification_events (... expected_serial_norm text ...)" 
+    # It does NOT have 'references devices(serial_norm)'. So we can't do auto-join in Supabase easily without FK.
+    
+    # Workaround: Fetch events, then unique expected_serials, then fetch devices, then map.
+    
+    events_res = supabase.table("verification_events").select("*").order("created_at", desc=True).limit(200).execute()
+    events = events_res.data
+    
+    if not events:
+        return []
+
+    # Collect Unique Serials (Norm)
+    serials = {e['expected_serial_norm'] for e in events if e.get('expected_serial_norm')}
+    
+    # Fetch Devices
+    devices_map = {}
+    if serials:
+        dev_res = supabase.table("devices").select("*").in_("serial_norm", list(serials)).execute()
+        for d in dev_res.data:
+            devices_map[d['serial_norm']] = d
+            
+    # Grouping Logic
+    # Structure: 
+    # [
+    #   {
+    #     "device_serial_norm": "...",
+    #     "device_model": "...",
+    #     "device_serial_raw": "...",
+    #     "access_logs": [
+    #        { "employee_name": "...", "employee_code": "...", "timestamp": "..." }
+    #     ]
+    #   }
+    # ]
+    
+    grouped = {}
+    
+    for e in events:
+        sn = e.get('expected_serial_norm')
+        if not sn:
+            sn = "UNKNOWN_OR_URL"
+            
+        if sn not in grouped:
+            # Init group
+            dev_info = devices_map.get(sn, {})
+            grouped[sn] = {
+                "device_serial_norm": sn,
+                "device_model": dev_info.get("model", "Unknown Device"),
+                "device_serial_raw": dev_info.get("serial_raw", sn),
+                "access_logs": []
+            }
+            
+        # Add Log
+        grouped[sn]["access_logs"].append({
+            "employee_code": e.get("employee_code"),
+            "employee_name": e.get("employee_name") or e.get("actor_name"),
+            "timestamp": e.get("created_at"),
+            "result": e.get("result")
+        })
+        
+    return list(grouped.values())
