@@ -99,7 +99,8 @@ async function loadMappings() {
 window.deleteMapping = async (labelId) => {
     if (!confirm(`Bạn có chắc muốn xóa liên kết cho ${labelId}?`)) return;
 
-    const res = await apiCall(`/api/admin/mappings/${labelId}`, 'DELETE');
+    // Encoded component to parse correctly on backend
+    const res = await apiCall(`/api/admin/mappings?label_id=${encodeURIComponent(labelId)}`, 'DELETE');
     if (res) {
         alert("Đã xóa liên kết");
         loadMappings();
