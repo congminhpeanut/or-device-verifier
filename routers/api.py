@@ -111,6 +111,9 @@ async def verify_event(req: VerificationRequest):
     label_res = supabase.table("labels").select("bound_serial_norm").eq("label_id", req.label_id).execute()
     
     expected_serial_norm = None
+    if label_res.data:
+        expected_serial_norm = label_res.data[0]['bound_serial_norm']
+
     result = "FAIL"
     message = "Label not found"
     
@@ -118,8 +121,9 @@ async def verify_event(req: VerificationRequest):
     if req.method == "URL_REDIRECT":
         result = "PASS"
         message = "URL Access"
-    elif label_res.data:
-        expected_serial_norm = label_res.data[0]['bound_serial_norm']
+        # If label was found (expected_serial_norm is set), great. 
+        # If not, it's just a raw URL scan without association.
+    elif expected_serial_norm:
         # Logic Change: If label exists, we pass. We DO NOT check serial match anymore per requirements.
         result = "PASS"
         message = "Verification Successful (Label Found)"
@@ -195,15 +199,37 @@ async def list_history_grouped(x_employee_code: str = Header(None)):
     
     if not events:
         return []
+    
+    # RECOVERY LOGIC: Identify events with missing expected_serial_norm but assume they might have a label map now
+    # This helps "fix" display for previous events where we didn't save the serial, OR if we just want robust display.
+    # We can try to look up label_id -> serial for events where expected_serial_norm is null/empty.
+    
+    # 1. Collect Label IDs from events that lack serial but have label_id
+    missing_serial_labels = {e['label_id'] for e in events if not e.get('expected_serial_norm') and e.get('label_id')}
+    
+    recovered_map = {}
+    if missing_serial_labels:
+        # Fetch bound serials for these labels
+        # Note: We look up even if active=False (history)
+        l_res = supabase.table("labels").select("label_id, bound_serial_norm").in_("label_id", list(missing_serial_labels)).execute()
+        for r in l_res.data:
+            recovered_map[r['label_id']] = r['bound_serial_norm']
 
-    serials = {e['expected_serial_norm'] for e in events if e.get('expected_serial_norm')}
+    # 2. Collect All Serials (Existing + Recovered)
+    serials = set()
+    for e in events:
+        sn = e.get('expected_serial_norm')
+        # Try recover
+        if not sn and e.get('label_id') in recovered_map:
+            sn = recovered_map[e['label_id']]
+            # Patch the event object temporarily for this request so grouping works
+            e['expected_serial_norm'] = sn
+            
+        if sn:
+            serials.add(sn)
     
     devices_map = {}
     if serials:
-        # Fetch devices matching serials
-        # Note: If serials contain special chars, PostgREST might handle them odd in GET usually, but Supabase py client uses POST usually? 
-        # Actually it uses GET for select. If list is long/complex, maybe issue.
-        # But serials are normalized (A-Z0-9 usually).
         dev_res = supabase.table("devices").select("*").in_("serial_norm", list(serials)).execute()
         for d in dev_res.data:
             devices_map[d['serial_norm']] = d
@@ -212,8 +238,7 @@ async def list_history_grouped(x_employee_code: str = Header(None)):
     
     for e in events:
         sn = e.get('expected_serial_norm')
-        # If no expected serial, check if observed has one (for manual scans without label?)
-        # But grouping is by DEVICE.
+        
         if not sn:
             sn = "UNKNOWN_OR_URL" # E.g. URL redirect events don't have expected serial
             
@@ -222,7 +247,7 @@ async def list_history_grouped(x_employee_code: str = Header(None)):
             # Fallback if device not found but serial exists (Deleted device?)
             model = dev_info.get("model", "Unknown Device")
             if not dev_info and sn != "UNKNOWN_OR_URL":
-                 model = "Unknown Device (Not in DB)"
+                 model = f"Unknown Device ({sn})"
             
             grouped[sn] = {
                 "device_serial_norm": sn,
