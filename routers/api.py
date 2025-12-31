@@ -108,7 +108,7 @@ async def verify_event(req: VerificationRequest):
     employee_name = emp_res.data[0]['full_name'] if emp_res.data else "Unknown"
 
     # 2. Look up Label
-    label_res = supabase.table("labels").select("bound_serial_norm").eq("label_id", req.label_id).execute()
+    label_res = supabase.table("labels").select("bound_serial_norm").eq("label_id", req.label_id).eq("active", True).execute()
     
     expected_serial_norm = None
     if label_res.data:
